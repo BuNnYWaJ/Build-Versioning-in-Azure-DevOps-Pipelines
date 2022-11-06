@@ -1,0 +1,64 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+trigger:
+- main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+   major: 1
+   minor: 0
+
+stages:
+
+# Versioning main branch builds
+
+- stage:
+  displayName: Build_Main_Version_Number
+  condition: eq(variables['Build.SourceBranch'], 'refs/heads/main')
+  jobs:
+  - job: Build_Main_Version_Number
+    variables:
+       patch: $[counter(variables['minor'], 0)]
+    steps:
+      - bash: |
+           echo "##vso[build.updatebuildnumber]$(major).$(minor).$(patch)"
+        name: SetMainBuildName
+# Versioning feature branch and PR builds
+
+- stage:
+  displayName: Build_Branch_Version_Number
+  condition: ne(variables['Build.SourceBranch'], 'refs/heads/main')
+  jobs:
+  - job: Build_Branch_Version_Number
+    variables:
+       prpatch: $[counter(variables['system.pullrequest.pullrequestid'], 0)]
+       brpatch: $[counter(variables['build.sourcebranchname'], 0)]
+    steps:
+      - bash: |
+           echo "##vso[build.updatebuildnumber]$(major).$(minor)-PullRequest.$(prpatch)"
+        condition: eq(variables['Build.Reason'], 'PullRequest')
+        name: SetPRBuildName
+      - bash: |
+           echo "##vso[build.updatebuildnumber]$(major).$(minor)-$(Build.SourceBranchName).$(brpatch)"
+        condition: ne(variables['Build.Reason'], 'PullRequest')
+        name: SetBranchBuildName
+# Stage for building your application
+
+- stage: Build_Steps
+  displayName: Build_Steps
+  condition: always()
+  jobs:  
+  - job: Build_Steps
+    displayName: Build_Steps
+    steps:
+    - script: echo Hello, world!
+      name: 'Run_a_one_line_script'
+    - script: |
+          echo Add other tasks to build, test, and deploy your project.
+          echo See https://aka.ms/yaml
+      name: 'Run_a_multi_line_cript'
